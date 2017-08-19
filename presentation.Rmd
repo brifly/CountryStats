@@ -1,0 +1,80 @@
+---
+title: "Country Stats Shiny App"
+subtitle: "Visualize GDP Data by Country"
+author: "Brian Flynn"
+date: "August 19, 2017"
+output: slidy_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(rgdal)
+library(leaflet)
+```
+
+## Overview
+
+```{r readingData, message=FALSE, warning=FALSE, results=FALSE}
+countryData <- readOGR(dsn = "countries", layer = "ne_50m_admin_0_countries", encoding = "UTF-8")
+data <- read.csv("data/gdp.csv", header=TRUE, quote = "", stringsAsFactors = F)
+names(data)[1] <- "Country"
+```
+
+```{r}
+input <- list(source = "GDP", mode=2, pal="Spectral")
+```
+
+```{r generatingMapData}
+dat <- data.frame(Country = data[,"Country"], value = data[,input$source])
+chartData <- merge(countryData, dat, by.x="name_long", by.y="Country")
+```
+
+```{r selectingColorPalette}
+if(input$mode == 1) {
+  pal <- colorBin(palette = input$pal, domain = chartData$value, n=9)
+} else {
+  pal <- colorQuantile(palette = input$pal, domain = chartData$value, n=9)
+}
+```
+
+The Country GDP Stats app shows GDP statistics overlayed on a map - e.g. GDP Per Capita:
+
+```{r renderData, fig.align='center'}
+leaflet(data = chartData) %>%
+        setView(lat=25, lng=0, zoom = 1.82) %>%
+        addTiles() %>% 
+        addPolygons(fillColor = ~pal(value), weight = 1, color="white", fillOpacity = 0.7, opacity = 1) %>%
+        addLegend(pal = pal, values = ~value, opacity = 0.7, title = NULL,  position = "bottomleft")
+```
+
+
+## Data
+
+GDP data comes from two sources:
+
+- http://statisticstimes.com/economy/countries-by-projected-gdp.php 
+- https://en.wikipedia.org/wiki/List_of_countries_by_GDP_(nominal)_per_capita 
+
+Shape data comes from:
+
+- http://www.naturalearthdata.com/downloads/50m-cultural-vectors/50m-admin-0-countries-2/
+
+The data is read as follows:
+```{r ref.label="readingData", echo=TRUE, results=F, message=F, warning=F, error=F}
+```
+
+## Generating Data from Selections
+
+- The User selects: source (i.e. the GDP Statistic), pal (The color palette to draw the map with) and mode (either absolute, which renders based on the values of the given statistic, or quantile, which renders based on the quantile of the country based on the statistic)
+- We use this information to generate a data set to render:
+```{r ref.label="generatingMapData", echo=TRUE, results=F, message=F, warning=F, error=F}
+```
+- We create a palette object based on the palette selection:
+```{r ref.label="selectingColorPalette", echo=TRUE, results=F, message=F, warning=F, error=F}
+```
+
+## Rendering the Map
+
+- And finally we render the map:
+```{r ref.label="renderData", echo=TRUE, results=F, message=F, warning=F, error=F}
+```
